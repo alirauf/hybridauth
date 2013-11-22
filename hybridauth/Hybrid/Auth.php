@@ -40,7 +40,6 @@ class Hybrid_Auth
 	}
 
 	// --------------------------------------------------------------------
-
 	/**
 	* Try to initialize Hybrid_Auth with given $config hash or file
 	*/
@@ -69,16 +68,12 @@ class Hybrid_Auth
 		# load hybridauth required files, a autoload is on the way...
 		require_once $config["path_base"] . "Error.php";
 		require_once $config["path_base"] . "Logger.php";
-
 		require_once $config["path_base"] . "Storage.php";
-
 		require_once $config["path_base"] . "Provider_Adapter.php";
-
 		require_once $config["path_base"] . "Provider_Model.php";
 		require_once $config["path_base"] . "Provider_Model_OpenID.php";
 		require_once $config["path_base"] . "Provider_Model_OAuth1.php";
 		require_once $config["path_base"] . "Provider_Model_OAuth2.php";
-
 		require_once $config["path_base"] . "User.php";
 		require_once $config["path_base"] . "User_Profile.php";
 		require_once $config["path_base"] . "User_Contact.php";
@@ -207,20 +202,31 @@ class Hybrid_Auth
 	public static function authenticate( $providerId, $params = NULL )
 	{
 		Hybrid_Logger::info( "Enter Hybrid_Auth::authenticate( $providerId )" );
+		if($params['uid'] !== NULL){
+			$uid = $params['uid'];
+				// if user not connected to $providerId then try setup a new adapter and start the login process for this provider
+				if( ! Hybrid_Auth::storage()->get( "hauth_session.$providerId.$uid.is_logged_in" ) ){ 
+				$provider_adapter = Hybrid_Auth::setup( $providerId, $params );
+				$provider_adapter->login();	
+				}else{
+				// else, then return the adapter instance for the given provider
 
+				return Hybrid_Auth::getAdapter( $providerId ,$params);
+				}
+			
+			
+		}
 		// if user not connected to $providerId then try setup a new adapter and start the login process for this provider
 		if( ! Hybrid_Auth::storage()->get( "hauth_session.$providerId.is_logged_in" ) ){ 
 			Hybrid_Logger::info( "Hybrid_Auth::authenticate( $providerId ), User not connected to the provider. Try to authenticate.." );
-
+			
 			$provider_adapter = Hybrid_Auth::setup( $providerId, $params );
 
 			$provider_adapter->login();
 		}
-
 		// else, then return the adapter instance for the given provider
 		else{
 			Hybrid_Logger::info( "Hybrid_Auth::authenticate( $providerId ), User is already connected to this provider. Return the adapter instance." );
-
 			return Hybrid_Auth::getAdapter( $providerId );
 		}
 	}
@@ -230,11 +236,10 @@ class Hybrid_Auth
 	/**
 	* Return the adapter instance for an authenticated provider
 	*/ 
-	public static function getAdapter( $providerId = NULL )
+	public static function getAdapter( $providerId = NULL,  $params = NULL )
 	{
 		Hybrid_Logger::info( "Enter Hybrid_Auth::getAdapter( $providerId )" );
-
-		return Hybrid_Auth::setup( $providerId );
+		return Hybrid_Auth::setup( $providerId ,$params);
 	}
 
 	// --------------------------------------------------------------------
@@ -277,7 +282,7 @@ class Hybrid_Auth
 	/**
 	* Check if the current user is connected to a given provider
 	*/
-	public static function isConnectedWith( $providerId )
+	public static function isConnectedWith( $providerId,  $params = NULL)
 	{
 		return (bool) Hybrid_Auth::storage()->get( "hauth_session.{$providerId}.is_logged_in" );
 	}
